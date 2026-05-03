@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn 
 import torch.nn.functional as F
 import math as mt 
-
+from utils import  Normalisation
             
 
 class SpatialTransformer(nn.Module):
@@ -14,13 +14,11 @@ class SpatialTransformer(nn.Module):
     #and return image N C H W 4D !!!! 
     def __init__(self, channels,d_cond,d_attn,n_heads,N_transformers,flash=False):
 
-        default_groups=32
-        nb_groups=channels if channels% default_groups !=0 else default_groups
-
+  
         super().__init__()
         self.conv1=nn.Conv2d(channels,channels,1,1,0)
         self.conv2=nn.Conv2d(channels,channels,1,1,0)
-        self.GN32=nn.GroupNorm(nb_groups,channels)
+        self.GN32=Normalisation(channels)
         #based on out notation, d_model=channels easily 
         self.transformer_blocks=nn.ModuleList([TransformerBlock(channels,d_cond,d_attn,n_heads,flash) for _ in range(N_transformers)])
     def forward(self,x,cond):
@@ -189,12 +187,9 @@ if __name__=="__main__":
     model2=CrossAttention(d_cond,d_cond,6,3)
     print("one forward pass  attention matrix shape", model2(cond).shape)
 
-
     cond2=torch.randn((N,4,5))
     model3=CrossAttention(d_cond,5,6,3)
 
     print("one forward pass  cross attention matrix shape", model3(cond,cond2).shape)
 
-
-    #test attention
 

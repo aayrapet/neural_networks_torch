@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn 
 import torch.nn.functional as F
 import math as mt 
-
+from utils import Upsample,Downsample,Normalisation
 from transformer import SpatialTransformer
 
 
@@ -14,13 +14,9 @@ from transformer import SpatialTransformer
 class ResBlock(nn.Module):
     def __init__(self,channels,d_t_emb,out_channels):
         super().__init__()
-
-
-        default_groups=32
-        nb_groups=channels if channels% default_groups !=0 else default_groups
         
-        self.norm1=nn.GroupNorm(nb_groups,channels)
-        self.norm2=nn.GroupNorm(nb_groups,out_channels)
+        self.norm1=Normalisation(channels)
+        self.norm2=Normalisation(out_channels)
         self.act1=nn.SiLU()
         self.act2=nn.SiLU()
         self.act3=nn.SiLU()
@@ -46,22 +42,6 @@ class ResBlock(nn.Module):
 
         return self.skip_connection(x_original)+h
    
-    
-class Downsample(nn.Module):
-    def __init__(self,channels):
-        super().__init__()
-        self.op=nn.Conv2d(channels,channels,3,2,1)
-    def forward(self,x):
-        return self.op(x)
-class Upsample(nn.Module):
-    def __init__(self,channels,scale=2):
-        super().__init__()
-
-        self.conv=nn.Conv2d(channels,channels,3,1,1)
-    def forward(self,x):
-        x = F.interpolate(x, scale_factor=2, mode="nearest")
-        return  self.conv(x)
-    
 
 class SequentialCustom(nn.Sequential):
     """
@@ -150,7 +130,7 @@ class Unet(nn.Module):
                 decoder.append(SequentialCustom(*chain))
         self.decoder=decoder
         self.final=nn.Sequential(
-            nn.GroupNorm(32,channels),
+            Normalisation(channels),
             nn.SiLU(),
             nn.Conv2d(channels,out_channels,3,1,1)
         )
