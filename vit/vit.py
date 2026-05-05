@@ -1,6 +1,6 @@
 import torch 
 import torch.nn as nn 
-from attention import TransformerBlock
+from ..attention import TransformerBlock
 class ViT(nn.Module):
     def __init__(self,H,W,C,D,N,dmodel,n_heads,num_classes,patch_resolution=16):
         """
