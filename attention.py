@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn 
 
 
-class TransformerBlock(nn.Module):
+class AttentionBlock(nn.Module):
     def __init__(self,embed,dmodel,n_heads,T,masked=False):
         super().__init__()
         """
@@ -46,7 +46,7 @@ class TransformerBlock(nn.Module):
         #mask attention 
             B,T,_,_=qk.shape
             #just reshape for dim match 
-            tril=self.tril[:,:T,:T,:].unsqueeze(0).unsqueeze(-1).expand(B,-1,-1,self.n_heads)
+            tril=self.tril[:T,:T].unsqueeze(0).unsqueeze(-1).expand(B,-1,-1,self.n_heads)
             #0s are now -inf since exp(-inf)=0
             #effective T can be lower then declared T at init (at inference)
             qk=qk.masked_fill(tril==0,-float("inf"))
