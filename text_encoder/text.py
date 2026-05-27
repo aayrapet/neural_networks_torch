@@ -11,10 +11,14 @@ from  attention import  AttentionBlock
 
 #https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf
 class TransformerRes(nn.Module):
+
+        
         def __init__(self,embed,dmodel,n_heads,nb_tokens,masked):
 
             super().__init__()
             self.op=nn.Sequential(AttentionBlock(embed,dmodel,n_heads,nb_tokens,masked))
+
+
         def forward(self, x):
             return self.op(x)+x
 
@@ -26,7 +30,7 @@ class MLPRes(nn.Module):
     def forward(self,x):
         return self.op(x)+x
 
-
+import math as mt 
 class TransformerBlock(nn.Module):
     def __init__(self,embed_in,dmodel,n_heads,nb_tokens,masked, embed_out):
         super().__init__()
@@ -48,7 +52,14 @@ class TextEncoder(nn.Module):
         #https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf again ,(2.3 Model)
         self.operations.append(nn.LayerNorm(embed_in))
 
-        self
+        self.nb_residual_layers=N_blocks*2 #inside TransformerBlock there is transformerres block and mlpres block 
+        self.operations.apply(self.weights_scaling)
+
+    def weights_scaling(self,m):
+            if isinstance(m, nn.Linear):
+                m.weight.data.mul_(1/mt.sqrt(self.nb_residual_layers)) 
+
+
     def forward(self, x):
         """
         x: 2D matrix : size  N,nb_tokens 
@@ -58,24 +69,16 @@ class TextEncoder(nn.Module):
         
         x=self.token_embed(x)#we get N,nb_tokens,embed_in 3D tensor 
         x=x+self.position_embed#add positional embed simply 
+
+
         for i in range(len(self.operations )):
             x=self.operations[i](x)
         return x@self.token_embed.weight.T
 
-# def xavier(param):
-#         init.xavier_uniform_(param)
-
-
-# def weights_init(m):
-#         if isinstance(m, TransformerBlock):
-
-#             xavier(m.weight)
-#             if m.bias is not None:
-#                 init.constant_(m.bias, 0)
 
 if __name__=="__main__":
     N=100
-    nb_tokens_per_doc=50
+    nb_tokens_per_doc=50#context size this is 
     #as if we use BPE to get 2D tensor
     VOCAB_SIZE=1000
     embed_in=200#one token is represented by  200 digits
