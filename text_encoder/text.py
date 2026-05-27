@@ -73,7 +73,10 @@ class TextEncoder(nn.Module):
 
         for i in range(len(self.operations )):
             x=self.operations[i](x)
-        return x@self.token_embed.weight.T
+        # output= x@self.token_embed.weight.T
+        eos_token=x[:,-1,:]
+        return eos_token
+        #eos token (since mask)
 
 
 if __name__=="__main__":

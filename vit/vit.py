@@ -1,6 +1,20 @@
 import torch 
 import torch.nn as nn 
-from ..attention import TransformerBlock
+
+
+
+import sys 
+import os
+import torch.nn.init as init
+print( sys.path[0])
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
+from attention import AttentionBlock
+
+
+
+
 class ViT(nn.Module):
     def __init__(self,H,W,C,D,N,dmodel,n_heads,num_classes,patch_resolution=16):
         """
@@ -9,10 +23,15 @@ class ViT(nn.Module):
         super().__init__()
 
         self.ptf=PatchTransformation(H,W,C,patch_resolution=patch_resolution)
+
+        self.nb_patches=self.ptf.nb_patches
+
         self.linear=nn.Linear(self.ptf.embed,D)
+
         self.cls_token=nn.Parameter(torch.randn(1,1,D))
         self.pos_embed=nn.Parameter(torch.randn(1,self.ptf.nb_patches+1,D))
-        self.blocks=nn.ModuleList([ Block(D,dmodel,n_heads) for _ in range(N )])
+
+        self.blocks=nn.ModuleList([ Block(D,dmodel,n_heads,self.nb_patches) for _ in range(N )])
 
         self.final_linear=nn.Linear(D,num_classes)
         self.finalnorm=nn.LayerNorm(D)
@@ -20,6 +39,7 @@ class ViT(nn.Module):
     def forward(self,x):
         B,C,H,W=x.shape
         patches=self.ptf(x)
+
         patch_embed=self.linear(patches)#B,N,D
         cls_token=self.cls_token.expand(B,-1,-1)
         patch_embed_cls=torch.cat([cls_token,patch_embed],dim=1)#B,N+1,D
@@ -27,31 +47,38 @@ class ViT(nn.Module):
         
         for i in range(len(self.blocks)):
             x=self.blocks[i](x)
-        
+
+
         extracted_cls_token=x[:,0,:]#in VIT we just extract first cls token that summaries the image so the size is simple B,D 
         extracted_cls_token=self.finalnorm(extracted_cls_token)
-        return self.final_linear(extracted_cls_token)
+        
+        #this code is for classification 
+
+        # return self.final_linear(extracted_cls_token)
+
+        #this code is for embeding simply 
+        return extracted_cls_token
 
 class Block(nn.Module):
-    def __init__(self,embed,dmodel,n_heads):
+    def __init__(self,embed,dmodel,n_heads,T):
         """
         input image is B,C,H,W
         """
         super().__init__()
         self.op=nn.Sequential(
-            TransformerBlockRes(embed,dmodel,n_heads),
+            TransformerBlockRes(embed,dmodel,n_heads,T),
         MLPRes(embed,embed*2))
 
     def forward(self,x):
         return self.op(x)
 
 class TransformerBlockRes(nn.Module):
-        def __init__(self,embed,dmodel,n_heads):
+        def __init__(self,embed,dmodel,n_heads,T):
             """
             input image is B,C,H,W
             """
             super().__init__()
-            self.op=nn.Sequential(nn.LayerNorm(embed),TransformerBlock(embed,dmodel,n_heads))
+            self.op=nn.Sequential(nn.LayerNorm(embed),AttentionBlock(embed,dmodel,n_heads,T))
         def forward(self, x):
             return self.op(x)+x
 
@@ -81,6 +108,7 @@ class PatchTransformation(nn.Module):
         self.H=H
         self.W=W
         self.C=C
+
 
     def forward(self,x):
 
